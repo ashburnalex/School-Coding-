@@ -1,0 +1,308 @@
+---
+output:
+  pdf_document: default
+
+---
+```{r}
+getwd()
+setwd("C:\\Users\\uttva\\OneDrive\\Desktop\\Rstuff")
+# setting survey data to df 
+df=read.csv("Psych of Debt.csv")
+head(df)[1][1]
+write.csv(df,file="Psych_AG.csv")
+df=read.csv("Psych_AG.csv")
+head(df)[1]
+
+library("ggplot2")
+```
+
+
+```{r}
+##INITIAL CLEANING
+
+
+#Checking for IP Duplicated
+table(df$IPAddress)
+# no duplicates
+
+# Taking out first row(tester)
+df<-df[2:nrow(df),]
+#Only completed surveys
+
+df<-df[df$Progress==100,]
+
+```
+
+
+```{r}
+
+# Random Stats
+head(df)[1][1]
+# Survey DUration
+sort(df$Duration..in.seconds.,decreasing = T)
+# Max Survey Time 27 minutes
+1621/60
+#Min Survey Time 
+# mhortest surveys 3.433333 3.466667 3.616667 minutes
+# Possible that this person did not take it seriously 
+sort(df$Duration..in.seconds.,decreasing = F)[1:3]/60
+
+# around 9 minutes on average 
+mean(df$Duration..in.seconds.)/60
+#Median of 8.25 
+median(df$Duration..in.seconds.)/60
+# sd of duration =4.37 minutes
+sd(df$Duration..in.seconds.)/60
+# shortest surveys are  1.277763 1.270139 1.235835 sds from the mean,
+#probably nothing to worry about
+((mean(df$Duration..in.seconds.)/60)- (sort(df$Duration..in.seconds.,decreasing = F)[1:3]/60))/(sd(df$Duration..in.seconds.)/60)
+# Everyone Consented
+sum(df$consent==0)
+# 
+
+```
+
+
+```{r}
+# only working on CC data so let us subset for only people with cc debt
+# first subset is people with debt
+df<-df[df$anyDebt==1,]
+str(df$debtSources)
+
+
+# Subsetting so that we only get people who are paying off cc debt 
+df[is.na(df$paying_off_1)==F,][1]
+ccdebt<-df[is.na(df$paying_off_1)==F & df$paying_off_1==1,]
+# proof that we only have people who are paying off cc debt
+
+table(ccdebt$paying_off_1)
+
+```
+
+
+```{r}
+# TIme for some analysis
+
+head(ccdebt)[1]
+
+# original amounts of cc debt
+ccdebt$orig_amt_1
+# Converting Original amount 1 or original cc debt to numeric 
+ccdebt$orig_amt_1<-as.numeric(as.character(ccdebt$orig_amt_1))
+#Converting Current amount 1 or Current cc debt to numeric 
+ccdebt$current_amt_1<-as.numeric(as.character(ccdebt$current_amt_1))
+ccdebt$current_amt_1-ccdebt$orig_amt_1
+ccdebt$orig_amt_1
+# getting rid of people who said they are paying off cc debt but had no original amount of cc debt
+ccdebt<-ccdebt[is.na(ccdebt$orig_amt_1)==F & ccdebt$orig_amt_1 >0,]
+nrow(ccdebt)
+
+# average amount of original cc debt  7726.037
+mean(ccdebt$orig_amt_1)
+#Median Amount of original cc debt  median(ccdebt$orig_amt_1)
+median(ccdebt$orig_amt_1)
+# sd original cc debt 6808.292
+sd(ccdebt$orig_amt_1)
+
+# bad attmept at plotting it 
+ggplot(ccdebt$orig_amt_1,data=ccdebt,mapping=aes(x=ccdebt$orig_amt_1))+geom_histogram()+xlim(0,40000)
+
+# average amount of current debt 7232.778
+mean(ccdebt$current_amt_1)
+# median amount of current debt 4150
+median(ccdebt$current_amt_1)
+# sd curent cc debt even bigger sd  10029.83
+sd(ccdebt$current_amt_1)
+# Very skewed
+ggplot(ccdebt$current_amt_1,data=ccdebt,mapping=aes(x=ccdebt$current_amt_1))+geom_histogram()+xlim(0,50000)
+```
+
+
+```{r}
+# Current amount related to original amount
+ccdebt$ccdifferance<-ccdebt$current_amt_1-ccdebt$orig_amt_1
+head(ccdebt$ccdifferance)[2]
+qplot(ccdebt$ccdifferance)
+
+# mean difference -493.2593, on average people paid off nearly 500 dollars of debt
+mean(ccdebt$ccdifferance)
+
+# median difference -343  
+median(ccdebt$ccdifferance)
+
+#sd differance a very big difference, outliers at work  8763.549
+ sd(ccdebt$ccdifferance)
+ggplot(ccdebt$ccdifferance,data=ccdebt,mapping=aes(x=ccdebt$ccdifferance))+geom_density()
+
+sort(ccdebt$ccdifferance)
+```
+
+
+```{r}
+#Interest rates
+ccdebt$int_rate_1
+# some interest cc rates had % in them so we took them out and then converted the entire column to numeric for analysis
+ccdebt$int_rate_1<-as.numeric(gsub('%','',ccdebt$int_rate_1))
+head(ccdebt$int_rate_1)[2]
+
+
+# Only 42.59% of people who had cc debt knew their interest rate 
+(sum(ccdebt$int_rate_1!=999.00)/nrow(ccdebt))*100
+#mean cc debt int rate , omit 999 of people who knew their interest rate mean=20.50565
+
+mean(ccdebt$int_rate_1[ccdebt$int_rate_1!=999.00])
+#median of 23
+median(ccdebt$int_rate_1[ccdebt$int_rate_1!=999.00])
+
+# sd of 7.084%
+sd(ccdebt$int_rate_1[ccdebt$int_rate_1!=999.00])
+help(boxplot)
+boxplot(ccdebt$int_rate_1[ccdebt$int_rate_1!=999.00],xlab=("Boxplot of ccdebt interest rates"))+ylim(-20,50)
+
+length(ccdebt$int_rate_1[ccdebt$int_rate_1!=999.00])
+sum(ccdebt$int_rate_1[ccdebt$int_rate_1!=999.00]>20.5)
+
+# The average APR charged in the second quarter of 2019 for credit card accounts that incurred interest was 17.14%, according to the Federal Reserve. according to nerdwallet
+# https://www.nerdwallet.com/blog/credit-cards/what-is-a-good-apr-for-a-credit-card/
+
+# number of people who have a cc int rate higher than national average 14, 23 people knew their int rate 
+sum(ccdebt$int_rate_1[ccdebt$int_rate_1!=999.00]>17.14)
+length(ccdebt$int_rate_1[ccdebt$int_rate_1!=999.00])
+# percent of people who have a > int rate than national average of people who knew their int rate 60.86957
+(sum(ccdebt$int_rate_1[ccdebt$int_rate_1!=999.00]>17.14)/length(ccdebt$int_rate_1[ccdebt$int_rate_1!=999.00]))*100
+ 
+
+# mean original debt of people with higher interest rates
+# base mean of 7726.037
+mean(ccdebt$orig_amt_1)
+#  original amount mean of  7228.571 for people who started off with high interest rate cards
+mean(ccdebt$orig_amt_1[ccdebt$int_rate_1 !=999.00 & ccdebt$int_rate_1 >17.14])
+# the peoplle who have higher interest rates actually have 500 dollars lower debt on average 
+mean(ccdebt$orig_amt_1)-mean(ccdebt$orig_amt_1[ccdebt$int_rate_1 !=999.00 & ccdebt$int_rate_1 >17.14])
+
+
+# do people with lower interest rates on average start off with less or more debt
+
+# average original amount of debt for all respondents  7726.037
+mean(ccdebt$orig_amt_1)
+# only 9 people have int rates lower than the average
+length(ccdebt$orig_amt_1[ccdebt$int_rate_1 !=999.00 & ccdebt$int_rate_1 <17.14])
+head(ccdebt$orig_amt_1[ccdebt$int_rate_1 !=999.00 & ccdebt$int_rate_1 <17.14])[2]
+# mean of 11277.78
+mean(ccdebt$orig_amt_1[ccdebt$int_rate_1 !=999.00 & ccdebt$int_rate_1 <17.14])
+
+
+# people who start off with a cc with less int rate have 3551.741 higher starting debt somehow
+# only 9 people so probably not statistically signifigant
+
+mean(ccdebt$orig_amt_1)-(mean(ccdebt$orig_amt_1[ccdebt$int_rate_1 !=999.00 & ccdebt$int_rate_1 <17.14]))
+
+
+# CURRENT AMOUNTs 
+
+# mean current amount of cc debt  7232.778
+mean(ccdebt$current_amt_1)
+
+# difference in means between current and original amounts of cc debt
+# people paid off 493 dollars on average
+mean(ccdebt$current_amt_1)-mean(ccdebt$orig_amt_1)
+ # people who had higher interest rates had an average of 4707.143
+mean(ccdebt$current_amt_1[ccdebt$int_rate_1!=999.00 & ccdebt$int_rate_1>17.14])
+# median of 4400
+median(ccdebt$current_amt_1[ccdebt$int_rate_1!=999.00 & ccdebt$int_rate_1>17.14])
+
+# sd of 3223.105
+
+sd(ccdebt$current_amt_1[ccdebt$int_rate_1!=999.00 & ccdebt$int_rate_1>17.14])
+
+#  
+
+# the people who had higher than average interest rates paid off -3018.894 of their debt on average 
+mean(ccdebt$current_amt_1[ccdebt$int_rate_1!=999.00&ccdebt$int_rate_1>17.14])-mean(ccdebt$orig_amt_1)
+
+# the people who had lower than average interest rates gained 3718.407 of their debt on average , maybe they felt that they could accrue more debt with a lower interest rate cc 
+
+mean(ccdebt$current_amt_1[ccdebt$int_rate_1!=999.00&ccdebt$int_rate_1<17.14])-mean(ccdebt$orig_amt_1)
+# only 9 respondents with a lower than average interest rate
+length((ccdebt$current_amt_1[ccdebt$int_rate_1!=999.00&ccdebt$int_rate_1<17.14]))
+
+
+# is it possible that people who do not know their interest rates have more debt, ie not knowing their interest rates make them more financially irresponsible?
+# 31 people do not know their interest rate
+length(ccdebt$current_amt_1[ccdebt$int_rate_1==999.00])
+# 57.40741 % of respondents with cc debt did not know their interest rates 
+((length(ccdebt$current_amt_1[ccdebt$int_rate_1==999.00]))/(length(ccdebt$int_rate_1)))*100
+
+# 6919.548 starting debt on average for people who did not know their interest rate
+mean(ccdebt$orig_amt_1[ccdebt$int_rate_1==999.00])
+# 5000 median starting debt for people who did not know their interest rate
+median(ccdebt$orig_amt_1[ccdebt$int_rate_1==999.00])
+# sd of 7215.203 for people who did not know their interest rate
+sd(ccdebt$orig_amt_1[ccdebt$int_rate_1==999.00])
+#   7150.645 current ccdebt for people who do not know their interest rate
+mean(ccdebt$current_amt_1[ccdebt$int_rate_1==999.00])
+
+# people who do not know their interest rate gained 231 dollars of cc debt on average 
+mean(ccdebt$current_amt_1[ccdebt$int_rate_1==999.00])-mean(ccdebt$orig_amt_1[ccdebt$int_rate_1==999.00])
+
+
+
+# Attempt at t tests
+
+# is there a difference in people with higher interest rates compared to people with lower interest rates
+# we reject the hypothesis that there is no difference in people with higher/lower interest rates, number of people with very low though
+t.test(ccdebt$current_amt_1[ccdebt$int_rate_1!=999.00&ccdebt$int_rate_1>17.14],ccdebt$current_amt_1[ccdebt$int_rate_1!=999.00&ccdebt$int_rate_1<17.14])
+
+summary(lm(diff ~ IVdummyorcontrast, data = ccdebt))
+
+# is there a difference between the people who know their interest rates and the ones who do not
+
+# we fail to reject that there is a difference in current amounts of debt for people who know their int rate and those who do not 
+
+t.test(ccdebt$current_amt_1[ccdebt$int_rate_1!=999.00],
+       ccdebt$current_amt_1[ccdebt$int_rate_1==999.00])
+```
+
+
+```{r}
+# wealth effect?
+# average response of 3/7 on wealth likert scale
+
+mean(ccdebt$wealthy)
+str(ccdebt$wealthy)
+ccdebt$wealthy<-as.factor(ccdebt$wealthy)
+ccdebt$wealthy
+
+summary(lm(ccdebt$current_amt_1~ccdebt$wealthy))
+
+
+aggregate(ccdebt$current_amt_1~ccdebt$wealthy,FUN = "mean")
+help(boxplot)
+# wealth level three seems to have some outliers
+boxplot(ccdebt$current_amt_1~ccdebt$wealthy,ylim=c(0,20000))
+
+# paid off balance in full every month=fullbalance
+ccdebt$fullBalance
+nrow(ccdebt)
+# changing 2s and 1s to binary values
+for (i in 1:nrow(ccdebt)){
+  if (ccdebt$fullBalance[i]==2){
+    ccdebt$fullBalance[i]<-1
+  }
+  else{
+    ccdebt$fullBalance[i]<-0
+  }
+}
+
+  
+# wealth , interest rate , and whether or not the respondent pays of their cc are not signifigant predictors of current debt 
+summary(lm(ccdebt$current_amt_1~ccdebt$wealthy+ccdebt$int_rate_1 + ccdebt$fullBalance))
+
+# even when trying to remove outliers non of our variables are signifigant predictiors of current amount of wealth 
+summary(lm(ccdebt$current_amt_1[ccdebt$current_amt_1<20001]
+           ~ccdebt$wealthy[ccdebt$current_amt_1<20001]
+           +ccdebt$int_rate_1[ccdebt$current_amt_1<20001]
+           +ccdebt$fullBalance[ccdebt$current_amt_1<20001]))
+
+```
+
