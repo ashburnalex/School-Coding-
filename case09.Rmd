@@ -1,0 +1,125 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r}
+#CASE 9
+getwd()
+setwd("C:\\Users\\uttva\\OneDrive\\Desktop\\Rstuff")
+read.csv('case09.csv',header=F)
+stocks<-read.csv("case09.csv",header = F)
+# Chi square test to see if number of days before a positive return was independent```
+
+
+```{r}
+stocks
+stocks$V2[7]>stocks$V2[6]
+nrow(stocks)
+stocks
+for (i in 1:33341){
+  if(stocks$V2[i+1]>stocks$V2[i]){
+    stocks$V3[i]<-1
+  }
+  else{
+    stocks$V3[i]<-0
+  }
+}
+sum(stocks$V3)
+stocks
+summary(stocks)
+bad<-which(stocks$V3==0)
+head(bad,20)
+good=which(stocks$V3==1)
+head(good,20)
+head(good,20)-head(bad,20)
+wait<-c()
+wait
+numdays<-1
+# calculate wait time 
+
+for (i in 1:33341){
+  if (stocks$V3[i+1]==0 &stocks$V3[i]==0){
+    numdays<-numdays+1
+    
+  }
+   else if (stocks$V3[i+1]==1 & stocks$V3[i]==0){
+   numdays<-numdays+1
+     wait[i]<-numdays 
+    numdays<-1
+   }
+  else if (stocks$V3[i+1]==1 & stocks$V3[i]==1){
+    wait[i]<-1
+  }
+    
+  
+}
+
+head(stocks,50)
+
+```
+
+
+```{r}
+# average number of waiting days until a positive stock day 
+mean(na.omit(wait))
+# percent of positive stock days 
+(sum(stocks$V3==1)/nrow(stocks) ) * 100
+nrow(stocks)
+(table(wait)/nrow(stocks))*100
+?table
+table(wait)
+waittable<-table(wait)
+sum(waittable)
+waittable<-as.numeric(waittable[1:11])
+sum(waittable)
+sum(waittable/sum(waittable))
+
+
+
+```
+
+
+```{r}
+# expected values for stocks
+days<-1
+p<-(sum(stocks$V3==1)/nrow(stocks) )
+p
+pp<-c()
+streaks<-sum(na.omit(waittable))
+streaks
+expec<-c()
+
+for (i in 1:11){
+ expec[i]<-(((1-p)^(i-1)) * (p))  * streaks
+ pp[i]<-expec[i]/streaks
+}
+
+sum(expec/streaks)
+sum(((waittable-expec)^2)/(expec))
+sum((((waittable-expec)^2)/(expec)))
+qchisq(0.95, df=10)
+help("chisq.test")
+length(expec)
+length(pp)
+waittable[]
+as.numeric(waittable)
+length(expec)
+length(as.numeric(waittable))
+round(expec)
+attributes(chisq.test(waittable))
+chisq.test(waittable,p=pp,rescale.p = T)$expected
+
+chisq.test(waittable,expec)$expected
+chisq.test(waittable)$expected
+
+top<-(chisq.test(waittable,p=pp,rescale.p = T)$observed-chisq.test(waittable,p=pp,rescale.p = T)$expected)^2
+sum(top/chisq.test(waittable,p=pp,rescale.p = T)$expected)
+chisq.test(waittable,p=pp,rescale.p = T)
+qchisq(.95,10)
+
+
+```{r}
+
+```
+
