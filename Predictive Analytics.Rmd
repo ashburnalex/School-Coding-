@@ -1,4 +1,10 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
 ```{r}
+knitr::opts_chunk$set(error = TRUE)
 ###### Predictive Analytics Challenge 
 #Checking Working Directory
 getwd()
@@ -52,9 +58,9 @@ df_ag<-data_ag[ , !(names(data_ag) %in% drops)]
 colnames(df_ag[1:50])
 emotional<-c(13,14,15,16,17,18,19,20,24,25)
 # list of emotional columns, left out incoh because i have no idea what it could possibly mean
-df_ag[emotional]
+names(df_ag[emotional])
 # total emotion evoked
-rowSums(df_ag[emotional])
+head(rowSums(df_ag[emotional]))
 df_ag$emotion_evoke_sum<-rowSums(df_ag[emotional])
 # average emotion evoked
 
@@ -131,7 +137,7 @@ x
 ctest_ag<-summary(lm(`10`~.,data=x))
 # LM with only numeric variables
 ctest_ag$adj.r.squared
-bad
+
 
 
 ```
@@ -159,7 +165,7 @@ length(as.numeric(gsub("`","",names(sig_p))))
 
 ```{r}
 cooksd<-cooks.distance(lm(x$`10`~.,data=col_ag[p_locations]))
-names(cooksd)
+
 length(cooksd)
 sample_size<-nrow(cooksd)
 plot(cooksd, pch="*", cex=2, main="Influential Obs by Cooks distance")+ abline(h = 4/nrow(col_ag), col="red")
@@ -192,7 +198,7 @@ names(col_ag[p_locations])
 
 
 names(col_ag[p_locations][1])<-names(df_ag[p_locations][1])
-col_ag[p_locations]
+head(col_ag[p_locations])
 ```
 
 
@@ -213,7 +219,7 @@ p_locations[12]<-8
 # setting the 13th index of our p_locations list to the mapping for the clicks column
 p_locations[13]<-10
 p_locations
-col_ag[p_locations]
+head(col_ag[p_locations])
 
 sort(col_ag$`10`,decreasing=T)
 ```
@@ -394,7 +400,15 @@ bad<-na.omit(as.numeric(names(cooksd)[(cooksd > (4/nrow(col_ag2)))]))
 
 
 ```{r} 
-summary(lm(clicks~.,data=col_ag2[-bad,p_loc[p_loc!=8]]))
+rand<-lm(clicks~.,data=col_ag2[col_ag2$spend>0 ,p_loc[p_loc!=8]])
+randcooks<-cooks.distance(rand)
+rand_bad<-na.omit(as.numeric(names(randcooks)[(randcooks> (4/nrow(col_ag2)))]))
+rand_bad
+summary(lm(clicks~.,data=col_ag2[-rand_bad &col_ag2$spend>0,p_loc[p_loc!=8]]))
+write.csv(col_ag2[col_ag2$spend >0,p_loc][-rand_bad],"rand_test.csv")
+col_ag2[ col_ag2$spend >0,p_loc]
+
+
 ```
 
 
@@ -403,7 +417,7 @@ summary(lm(clicks~.,data=col_ag2[-bad,p_loc[p_loc!=8]]))
 # text mapping
 p_loc[15]<-8
 names(col_ag2[p_loc])
-write.csv(col_ag2[-bad,p_loc[p_loc!=8]],"Trigger_non_cooks.csv")
+write.csv(col_ag2[-bad,p_loc],"Trigger_non_cooks.csv")
 ```
 
 
@@ -427,8 +441,9 @@ write.csv(col_ag2[col_ag2$clicks>0,p_locations_1],file="Signifgant_non_zeros.csv
 
 
 ```{r}
-col_ag2[p_locations_1[p_locations_1!=8]]
+head(col_ag2[p_locations_1[p_locations_1!=8]])
 write.csv(col_ag2[p_locations_1[p_locations_1!=8]],file="Signifgant_non_text.csv")
+df_ag[c(2,23)]
 ```
 
 
@@ -460,7 +475,7 @@ write.csv(col_ag2[p_loc],file='everything.csv')
 
 
 ```{r} 
-col_ag[col_ag$`10`>0,]
+head(col_ag[col_ag$`10`>0,])
 ```
 
 
