@@ -1,0 +1,502 @@
+```{r}
+###### Predictive Analytics Challenge 
+#Checking Working Directory
+getwd()
+setwd("C:\\Users\\uttva\\OneDrive\\Desktop\\Rstuff")
+```
+
+
+```{r}
+
+library('dplyr')
+```
+
+
+```{r}
+# Reading in data and getting an initial look
+data_ag<-read.csv('rusdata_utf8.csv')
+head(data_ag)
+# looks like to many columns , my initial approach will be to feature analyze the data and see if i can create new columns that are statistically signifigant to the linear model, we will then feed the parsimonious model into datarobot for analysis.
+
+# In summary my hypothesis is that I will have the best results using R for data preparation, I want to make a parsimonious model in R before feeding the data into DataRobot
+```
+
+
+```{r}
+# Initial Look at columns
+names(data_ag)[1:50]
+
+# Looks like there is a pandoras box of columns within this dataset
+# to create a parsimonious model I will try to run a linear model predicting clicks using all of the columns, I will then keep the ones with a low enough p value.
+```
+
+
+```{r}
+#first we have to get rid of the columns that do not make sense intitally for the model
+
+# Whether your machine learning algorithm was built correctly and using realistic features
+#Don't include anything that we wouldn't know BEFORE an advertisement was launched
+#e.g., impressions, views, campaign duration
+
+
+# impressions enddate,and ctr are the only columns that I see that i cannot have beforehand
+# E_day is all the same day so we will be dropping that column as well
+# c length and campaign length are both columns we should not know beforehand
+drops<-c("impress","ctr",'enddate','e_day','clength','campaignlength_old_dontuse')
+df_ag<-data_ag[ , !(names(data_ag) %in% drops)]
+```
+
+
+```{r}
+# feature analysis, going to try and make an emotional invoke column, how much total an add does at elliciting emotion
+colnames(df_ag[1:50])
+emotional<-c(13,14,15,16,17,18,19,20,24,25)
+# list of emotional columns, left out incoh because i have no idea what it could possibly mean
+df_ag[emotional]
+# total emotion evoked
+rowSums(df_ag[emotional])
+df_ag$emotion_evoke_sum<-rowSums(df_ag[emotional])
+# average emotion evoked
+
+nrow(df_ag)
+length(df_ag$emotion_evoke_sum)
+df_ag$emotion_evoke_avg<-df_ag$emotion_evoke_sum
+head(df_ag$emotion_evoke_sum)
+df_ag$emotion_evoke_avg<-df_ag$emotion_evoke_sum/length(emotional)
+head(df_ag$emotion_evoke_avg)
+length(df_ag)
+```
+
+
+```{r}
+# linear model will not output correctly if column names are to long , seeing if we can truncate the column names without having duplicates
+# one annoying problem we run into is that column names often differ by number of periods
+test=substring(names(df_ag),1,50)
+table(test)[5]
+# truncating to the 50th chacter still yields duplicate column names 
+subset(table(test),table(test)>1)
+
+# trying 70 characters
+test=substring(names(df_ag),1,70)
+# still issues, Interests..African.AmericanCivilRightsMovement.1954.68..African.Americ column still has 4 duplicates 
+                                                                     
+subset(table(test),table(test)>1)
+length(names(df_ag))
+stringnames=c(1:length(df_ag))
+stringnames
+
+# will try renmaing all the columns to get rid of duplicate column names 
+for (i in length(stringnames)){
+  stringnames[i]<-toString(stringnames[i])
+}
+head(stringnames[1:5])
+
+
+```
+
+
+
+
+
+
+
+
+```{r}
+head(df_ag,1)
+names(df_ag)[1:15]
+
+```
+
+
+
+
+
+```{r}
+# renaming COlumns
+col_ag<-df_ag
+head(col_ag)
+str(stringnames)
+head(stringnames)
+names(col_ag)<-stringnames
+
+# no duplicate column names now
+```
+
+
+```{r}
+x<-dplyr::select_if(col_ag,is.numeric)
+x[1:10]
+x
+
+ctest_ag<-summary(lm(`10`~.,data=x))
+# LM with only numeric variables
+ctest_ag$adj.r.squared
+bad
+
+
+```
+
+
+```{r}
+ptest_ag<-coef((ctest_ag))[, 4]<=.05
+# these are the columns that have low pvalues 
+head(ptest_ag,2)
+sig_p<-subset(ptest_ag,ptest_ag==1)
+
+names(sig_p)
+# getting the location within the vector
+p_locations<-c()
+for (i in 1:length(as.numeric(gsub("`","",names(sig_p))))){
+  p_locations[i]<-as.numeric(gsub("`","",names(sig_p)))[i]
+  
+}
+length(as.numeric(gsub("`","",names(sig_p))))
+
+
+ summary(lm(x$`10`~.,data=col_ag[p_locations]))
+```
+
+
+```{r}
+cooksd<-cooks.distance(lm(x$`10`~.,data=col_ag[p_locations]))
+names(cooksd)
+length(cooksd)
+sample_size<-nrow(cooksd)
+plot(cooksd, pch="*", cex=2, main="Influential Obs by Cooks distance")+ abline(h = 4/nrow(col_ag), col="red")
+```
+
+
+```{r}
+
+
+
+```
+
+
+```{r}
+#now we have the variables that are signifigant within our linear model, we have to assign them names we can understand
+p_locations
+names(df_ag[p_locations])
+# The list of variables within our linear model that our 95% signifigant or lower
+# 11 statistically signifigant numeric variables
+rename_list<-names(df_ag[p_locations])
+str(rename_list)
+rename_list1<-c()
+for (i in 1:length (rename_list)){
+  rename_list1[i]<-rename_list[i]
+}
+rename_list1
+
+names(col_ag[p_locations])<-as.character(rename_list)
+names(col_ag[p_locations])
+
+
+names(col_ag[p_locations][1])<-names(df_ag[p_locations][1])
+col_ag[p_locations]
+```
+
+
+```{r} 
+# gave up on trying to rename the columns back, would never work 
+names(col_ag[p_locations][1])<-rename_list[1]
+colnames(col_ag[p_locations])<-as.character(rename_list1)
+colnames(col_ag[p_locations])
+```
+
+
+```{r} 
+# adding the text of the ad back in for DataRobot Purposes to P-locations for mapping
+length(p_locations)
+# setting the 12th index of our p_locations list to the mapping for the text column
+p_locations[12]<-8
+
+# setting the 13th index of our p_locations list to the mapping for the clicks column
+p_locations[13]<-10
+p_locations
+col_ag[p_locations]
+
+sort(col_ag$`10`,decreasing=T)
+```
+
+
+```{r} 
+#outputting first test csv for datarobot test1
+help(write.csv)
+write.csv(col_ag[p_locations],file="test01.csv")
+# test of datarobot without changing data
+write.csv(df_ag,file='Comparison_test.csv')
+```
+
+
+```{r} 
+# outputting second test that has the features i created, seeing if datarobot can improve R^2 scored using these two features, emotion evoked sum and average
+p_locations
+length(p_locations)
+# two created features are the last two columns 
+length(df_ag)
+# mapping
+p_locations[14:15]<-c(1443,1444)
+p_locations
+names(df_ag[p_locations])
+write.csv(df_ag[p_locations],file="FeatureTest.csv")
+# actually the inclusion of the emotional features i created made the r^2 score worse.
+```
+
+
+```{r} 
+# Webscraping to get words related to politics to make more features out of the text
+
+# attempt at webscraping
+install.packages('rvest')
+install.packages('jsonlite')
+install.packages('httr') 
+```
+
+
+```{r} 
+#Loading Webscrape Libraries
+library('rvest')
+
+library('jsonlite')
+
+library('httr')
+```
+
+
+```{r} 
+# making a for loop to get a list of politily triggering words
+#words that are triggered by (strongly associated with) the word 
+trigg<-c("Racist","Left","Right","Democrat","republican","socialism","Liberal","Conservative")
+
+#Words that are triggered by the trigg variable and related to these topics
+topics<-c("police","Mexican","Blacks","African","American","divide","Parties","Politics",
+"liberal","Republican","Gay","Bisexual","Lesbian","Trans","Faggot","Guns","Trump","Liberal",
+"Hick","Trans","School&Shootings","Sandy&Hook","Abortion","Christian","Christian&Values","Southern","Immigration","Brutality","9/11","Homophobia","Clinton","Bernie&Sanders","Corruption","Obama","Hate","Hillary&Email","Black&Lives&Matter","Islam","Muslim","terrorist","terrorism","MAGA","Make&America&Great&Again")
+help("paste0")
+trigg[1]
+topics[1]
+help(data.frame)
+# making the dictionary of triggering words
+# initializing dictionary so the column names match the output of related words dataframe 
+trigger_dictionary<-data.frame(word=c(trigg,topics),check.names = F,stringsAsFactors = F)
+head(trigger_dictionary)
+str(trigger_dictionary)
+```
+
+
+```{r} 
+
+  for (k in 1:length(trigg)){
+    trigg_counter<-k
+    for (i in 1:length(topics)){
+    url <- paste0("http://api.datamuse.com/words?rel_jjb=",trigg[k],"&topics=",topics[i])
+    #Words Strictly Related to the topic 
+    url2<-paste0("https://api.datamuse.com/words?ml=",topics[i])
+    word_df<-fromJSON(url, flatten = TRUE) %>%  data.frame()
+  
+    word_df_1<-fromJSON(url2, flatten = TRUE) %>%  data.frame()
+    trigger_dictionary<-rbind(trigger_dictionary,word_df[1])
+    trigger_dictionary<-rbind(trigger_dictionary,word_df_1[1])
+
+      
+    }
+  }
+
+
+    
+```
+
+
+```{r} 
+
+
+
+# a lot of duplicates
+#57528 words in my dictionary
+  nrow(trigger_dictionary)
+# all of the unique words in the trigger dictionary
+Unique_Triggers<-unique(trigger_dictionary)
+head(Unique_Triggers)
+str(Unique_Triggers)
+
+#3414 trigger words
+nrow(Unique_Triggers)
+```
+
+
+```{r} 
+# String Library
+install.packages("stringr")
+
+```
+
+
+```{r} 
+library(stringr)
+```
+
+
+```{r} 
+Unique_Triggers[10,]
+df_ag$text[1]
+
+str_count(df_ag$text[1],"south")
+"fag"%in% Unique_Triggers
+help(str_count)
+head(df_ag)
+#Making Trigger Percent Column
+df_ag$Trigger_percent<-0
+# Count Column , might be useful
+df_ag$Trigger_count<-0
+
+for (i in 1:nrow(df_ag)){
+  triggercount<-0
+  for (k in 1:nrow(Unique_Triggers)){
+      triggercount<-triggercount+str_count(tolower(df_ag$text[i]),tolower(Unique_Triggers[k,]))
+  }
+  df_ag$Trigger_percent[i]<-triggercount/nrow(Unique_Triggers)
+  df_ag$Trigger_count[i]<-triggercount
+  
+}
+unique(df_ag$Trigger_percent)
+1+1
+df_ag$Trigger_percent<-df_ag$Trigger_percent*100
+head(df_ag$Trigger_count)
+
+```
+
+
+```{r} 
+col_ag2<-df_ag
+length(col_ag2)
+col_ag2[1445:1446]
+
+p_loc<-p_locations[1:11]
+# adding in mapping for the two trigger variables
+p_loc[12:13]<-c(1445,1446)
+#adding clicks back in 
+p_loc[14]<-10
+p_loc
+names(df_ag[p_loc])
+summary(lm(clicks~.,data=col_ag2[col_ag2$clicks>0,p_loc[p_loc!=8]]))
+col_ag2[col_ag2$clicks>0,p_loc!=8]
+col_ag2[p_loc[p_loc!=8]]
+col_ag2[col_ag2$clicks>0,p_loc[p_loc!=8]]
+```
+
+
+```{r} 
+trigger_test<-lm(clicks~.,data=col_ag2[p_loc[p_loc!=8]])
+summary(trigger_test)
+cooksd<-cooks.distance(trigger_test)
+bad<-na.omit(as.numeric(names(cooksd)[(cooksd > (4/nrow(col_ag2)))]))
+```
+
+
+```{r} 
+summary(lm(clicks~.,data=col_ag2[-bad,p_loc[p_loc!=8]]))
+```
+
+
+```{r} 
+# trigger test without bad cooks distances
+# text mapping
+p_loc[15]<-8
+names(col_ag2[p_loc])
+write.csv(col_ag2[-bad,p_loc[p_loc!=8]],"Trigger_non_cooks.csv")
+```
+
+
+```{r} 
+summary(lm(clicks~.,data=col_ag2[-bad,p_loc[p_loc!=8]]))
+```
+
+
+```{r} 
+#non zero in datarobot
+write.csv(col_ag2[col_ag2$clicks>0,p_loc],file="everything_but_zero.csv")
+```
+(
+
+```{r}
+p_locations_1<-p_locations[c(1:(length(p_locations)-2))]
+
+p_locations_1
+write.csv(col_ag2[col_ag2$clicks>0,p_locations_1],file="Signifgant_non_zeros.csv")
+```
+
+
+```{r}
+col_ag2[p_locations_1[p_locations_1!=8]]
+write.csv(col_ag2[p_locations_1[p_locations_1!=8]],file="Signifgant_non_text.csv")
+```
+
+
+```{r} 
+#outputting for datarobot, test with trigger feature included
+col_ag2[p_loc]
+length(p_loc)
+#adding mapping for text
+p_loc[15]<-8
+col_ag2[p_loc]
+length(p_loc)
+write.csv(col_ag2[p_loc],file="Trigger_Test.csv")
+```
+
+
+```{r} 
+p_loc
+```
+
+
+```{r} 
+p_locations
+length(p_loc)
+p_loc[16:17]<-c(1443,1444)
+col_ag2[p_loc]
+# combinging everything
+write.csv(col_ag2[p_loc],file='everything.csv')
+```
+
+
+```{r} 
+col_ag[col_ag$`10`>0,]
+```
+
+
+
+```{r}
+
+```
+
+
+```{r}
+# for loop for a parsimonious model 
+# tried running this loop for multiple hours but it never finished 
+#x
+#r_maps<-c()
+#final_test<-summary(lm(x$`10`~.,data=x))
+#final_test$adj.r.squared
+#x[1]
+
+#for (i in 2:length(x)){
+  #R_circle<-summary(lm(x$`10`~.,data=x[1:i-1]))$adj.r.squared
+  #if (summary(lm(x$`10`~.,data=x[1:i]))$adj.r.squared >R_circle){
+    #r_maps[i-1]<-(i-1)
+  #}
+  #else {
+   #r_maps[i-1]<-0
+  #}
+#}
+#r_maps
+```
+
+
+```{r}
+
+```
+
+
+
+```
+
